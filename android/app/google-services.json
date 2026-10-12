@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "773930884461",
+    "project_id": "ucu-wellbeing",
+    "storage_bucket": "ucu-wellbeing.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:773930884461:android:82600973d59951a6248e64",
+        "android_client_info": {
+          "package_name": "com.didanji.ucu_wellbeing"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjPSZtCr4rnwunWyXnq7P_VC_cmjbqbB0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
