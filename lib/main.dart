@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
+import 'screens/auth/auth_gate.dart';  
 
 /// While developing, talk to the local emulators instead of the real Firebase.
 const bool useEmulators = true;
@@ -36,7 +37,7 @@ class UcuWellbeingApp extends StatelessWidget {
         colorSchemeSeed: const Color(0xFF3F6E55),
         useMaterial3: true,
       ),
-      home: const SmokeTestPage(),
+            home: const AuthGate(),
     );
   }
 }
