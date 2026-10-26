@@ -3,37 +3,54 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 11, 11);
+    // ---------- helpers ----------
+    function signedIn() {
+      return request.auth != null;
     }
-    match /users/{uid} {
-      // A student can read only their own profile.
-      allow read: if request.auth != null && request.auth.uid == uid;
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && myProfile().role == 'admin';
+    }
+    function validServices() {
+      return ['counselling', 'peer_counselling', 'chaplaincy', 'workshops'];
+    }
 
-      // Registration: you can only create YOUR profile, only as a student,
-      // only with these four fields, and only with your own sign-in email.
-      allow create: if request.auth != null
+    // ---------- users (FR1 + FR9) ----------
+    match /users/{uid} {
+      // You can read your own profile; an admin can read everyone's.
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+
+      // Registration: only your own profile, only as a student,
+      // only these four fields, only with your own sign-in email.
+      allow create: if signedIn()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['fullName', 'email', 'role', 'createdAt'])
         && request.resource.data.role == 'student'
         && request.resource.data.email == request.auth.token.email;
 
-      // A student may later fix their name - but never change their role or email.
-      allow update: if request.auth != null
-        && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName']);
+      allow update: if signedIn() && (
+        // You may fix your own name - never your role, service or email.
+        (request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName']))
+        ||
+        // An admin may change SOMEONE ELSE's role/service (not their own).
+        (isAdmin() && request.auth.uid != uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'serviceId'])
+          && request.resource.data.role in ['student', 'staff', 'admin']
+          && (request.resource.data.role != 'staff'
+              || request.resource.data.serviceId in validServices()))
+      );
 
       allow delete: if false;
     }
 
+    // ---------- TEMPORARY: Task 1 smoke test. Task 5 removes this. ----------
+    match /smoke_tests/{doc} {
+      allow read, write: if true;
+    }
   }
 }
