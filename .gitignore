@@ -50,3 +50,6 @@ app.*.map.json
 # Firebase emulator logs
 *-debug.log
 .firebase/
+
+   emulator-data/
+   rules-tests/node_modules/
