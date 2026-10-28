@@ -1,5 +1,9 @@
 rules_version = '2';
 
+// UCU Wellbeing - Firestore Security Rules (Sprint 1, Task 5)
+// Requirements: FR1 (accounts), FR9 (roles), NFR1 (minimal data), NFR2 (server-side access control)
+// Anything not explicitly allowed below is DENIED by default.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -48,9 +52,8 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ---------- TEMPORARY: Task 1 smoke test. Task 5 removes this. ----------
-    match /smoke_tests/{doc} {
-      allow read, write: if true;
-    }
+    // The temporary smoke_tests rule from Task 1 has been removed.
+    // New collections (services, resources, requests) get their own rules
+    // in Sprints 2-4, each with tests in rules-tests/.
   }
 }
