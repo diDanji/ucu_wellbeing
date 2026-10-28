@@ -1,7 +1,8 @@
 rules_version = '2';
 
-// UCU Wellbeing - Firestore Security Rules (Sprint 1, Task 5)
-// Requirements: FR1 (accounts), FR9 (roles), NFR1 (minimal data), NFR2 (server-side access control)
+// UCU Wellbeing - Firestore Security Rules
+// Sprint 1: users (FR1, FR9)          Sprint 2: categories, services, resources (FR2, FR3, FR6)
+// Requirements: NFR1 (minimal data), NFR2 (server-side access control)
 // Anything not explicitly allowed below is DENIED by default.
 
 service cloud.firestore {
@@ -11,13 +12,23 @@ service cloud.firestore {
     function signedIn() {
       return request.auth != null;
     }
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
     function myProfile() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     function isAdmin() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && myProfile().role == 'admin';
+      return hasProfile() && myProfile().role == 'admin';
+    }
+    function isStaff() {
+      return hasProfile() && myProfile().role == 'staff';
+    }
+    function isStaffOf(serviceId) {
+      return isStaff() && myProfile().serviceId == serviceId;
+    }
+    function isStaffOrAdmin() {
+      return isStaff() || isAdmin();
     }
     function validServices() {
       return ['counselling', 'peer_counselling', 'chaplaincy', 'workshops'];
@@ -52,8 +63,69 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // The temporary smoke_tests rule from Task 1 has been removed.
-    // New collections (services, resources, requests) get their own rules
-    // in Sprints 2-4, each with tests in rules-tests/.
+    // ---------- categories (Sprint 2) ----------
+    // Labels such as "Mental health and counselling". Not sensitive, so any
+    // signed-in user may read them; only an admin manages them.
+    match /categories/{categoryId} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin() && validCategory();
+      allow delete: if false;
+    }
+    function validCategory() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['name', 'appliesTo', 'description', 'status'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 60
+        && d.appliesTo in ['service', 'resource', 'both']
+        && d.status in ['active', 'inactive'];
+    }
+
+    // ---------- services: the service directory (FR3, FR6) ----------
+    // Students see only PUBLISHED services. Staff see and edit only THEIR OWN
+    // service. Only an admin creates services, and only the four known ones.
+    match /services/{serviceId} {
+      allow read: if signedIn()
+        && (resource.data.status == 'published' || isAdmin() || isStaffOf(serviceId));
+      allow create: if isAdmin() && serviceId in validServices() && validService();
+      allow update: if (isAdmin() || isStaffOf(serviceId))
+        && validService()
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if false;
+    }
+    function validService() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['name', 'description', 'categoryId', 'location', 'operatingHours',
+                               'contactMethod', 'accessMethod', 'eligibility', 'whatToExpect',
+                               'appointmentRequired', 'expectedResponseTime', 'status',
+                               'updatedAt', 'updatedBy'])
+        && d.keys().hasAll(['name', 'status', 'appointmentRequired'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 80
+        && d.status in ['draft', 'published']
+        && d.appointmentRequired is bool;
+    }
+
+    // ---------- resources: wellbeing information (FR2, FR6) ----------
+    // Students see only PUBLISHED resources. Staff create resources and edit
+    // their own; an admin can edit any. Nothing is deleted - it is archived.
+    // (Approval before publishing, FR7, is added in Sprint 4.)
+    match /resources/{resourceId} {
+      allow read: if signedIn()
+        && (resource.data.status == 'published' || isStaffOrAdmin());
+      allow create: if isStaffOrAdmin()
+        && validResource()
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if validResource()
+        && request.resource.data.createdBy == resource.data.createdBy
+        && (isAdmin() || (isStaff() && resource.data.createdBy == request.auth.uid));
+      allow delete: if false;
+    }
+    function validResource() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['title', 'summary', 'content', 'resourceType', 'categoryId', 'status',
+                               'createdBy', 'createdAt', 'updatedAt', 'publishedAt'])
+        && d.keys().hasAll(['title', 'content', 'categoryId', 'status', 'createdBy'])
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 120
+        && d.content is string && d.content.size() <= 20000
+        && d.status in ['draft', 'published', 'archived'];
+    }
   }
 }
