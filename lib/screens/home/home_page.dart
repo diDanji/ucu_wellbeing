@@ -4,6 +4,7 @@ import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../admin/admin_users_page.dart';
 import '../staff/staff_home.dart';
+import '../student/student_home.dart';
 
 /// Loads the signed-in user's profile and sends them to the right area
 /// for their role (FR9). The role is read from Firestore, never chosen in the app.
@@ -35,34 +36,6 @@ class HomePage extends StatelessWidget {
             return StudentHome(me: profile);
         }
       },
-    );
-  }
-}
-
-class StudentHome extends StatelessWidget {
-  const StudentHome({super.key, required this.me});
-  final AppUser me;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('UCU Wellbeing'),
-        actions: const [SignOutButton()],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Text('Hello, ${me.fullName.split(' ').first}',
-              style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Text(me.email),
-          const SizedBox(height: 16),
-          Align(alignment: Alignment.centerLeft, child: Chip(label: Text('Role: ${me.role.name}'))),
-          const SizedBox(height: 24),
-          const Text('Support services will appear here in Sprint 2.'),
-        ],
-      ),
     );
   }
 }
