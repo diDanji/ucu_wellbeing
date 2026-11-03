@@ -5,10 +5,11 @@ import '../../models/service_category.dart';
 import '../../models/support_service.dart';
 import '../../services/directory_service.dart';
 import '../home/home_page.dart';
+import 'resources_tab.dart';
 import 'service_detail_page.dart';
 import 'service_ui.dart';
 
-/// FR3 - the student's home: a searchable directory of PUBLISHED services.
+/// The student's home: two tabs - Services (FR3) and Information (FR2).
 class StudentHome extends StatefulWidget {
   const StudentHome({super.key, required this.me});
   final AppUser me;
@@ -18,6 +19,45 @@ class StudentHome extends StatefulWidget {
 }
 
 class _StudentHomeState extends State<StudentHome> {
+  int _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('UCU Wellbeing'),
+        actions: const [SignOutButton()],
+      ),
+      // IndexedStack keeps each tab's search and filters when switching.
+      body: IndexedStack(
+        index: _tab,
+        children: [
+          _ServicesTab(me: widget.me),
+          const ResourcesTab(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (i) => setState(() => _tab = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Services'),
+          NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'Information'),
+        ],
+      ),
+    );
+  }
+}
+
+/// FR3 - a searchable directory of PUBLISHED services.
+class _ServicesTab extends StatefulWidget {
+  const _ServicesTab({required this.me});
+  final AppUser me;
+
+  @override
+  State<_ServicesTab> createState() => _ServicesTabState();
+}
+
+class _ServicesTabState extends State<_ServicesTab> {
   final _directory = DirectoryService();
   late final Stream<List<SupportService>> _services = _directory.publishedServices();
   late final Stream<Map<String, ServiceCategory>> _categories = _directory.activeCategories();
@@ -37,12 +77,7 @@ class _StudentHomeState extends State<StudentHome> {
     final theme = Theme.of(context);
     final firstName = widget.me.fullName.trim().split(' ').first;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('UCU Wellbeing'),
-        actions: const [SignOutButton()],
-      ),
-      body: StreamBuilder<Map<String, ServiceCategory>>(
+    return StreamBuilder<Map<String, ServiceCategory>>(
         stream: _categories,
         builder: (context, catSnap) {
           final categories = catSnap.data ?? const <String, ServiceCategory>{};
@@ -125,7 +160,6 @@ class _StudentHomeState extends State<StudentHome> {
             },
           );
         },
-      ),
     );
   }
 }
