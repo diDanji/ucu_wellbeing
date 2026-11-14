@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/support_service.dart';
 import '../../services/directory_service.dart';
+import 'request_support_page.dart';
 import 'service_ui.dart';
 
 /// FR3 - everything a student needs before reaching a service:
@@ -91,9 +92,11 @@ class _Details extends StatelessWidget {
         ],
         const SizedBox(height: 24),
         FilledButton.icon(
-          onPressed: null, // Sprint 3: support requests (FR4)
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => RequestSupportPage(service: s),
+          )),
           icon: const Icon(Icons.send_outlined),
-          label: const Text('Request support (coming soon)'),
+          label: const Text('Request support'),
         ),
         const NotEmergencyNote(),
       ],

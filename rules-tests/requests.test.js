@@ -24,6 +24,7 @@ describe('Requests (Sprint 3)', function () {
     requestType: 'appointment',
     preferredContact: 'sms',
     contactValue: '0700 000 000',
+    urgency: 'this_week',
     status: 'submitted',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -41,6 +42,7 @@ describe('Requests (Sprint 3)', function () {
         requestType: 'talk_to_someone',
         preferredContact: 'call',
         contactValue: '0700 000 000',
+        urgency: 'this_week',
         status: 'submitted',
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -130,6 +132,20 @@ describe('Requests (Sprint 3)', function () {
       await assertFails(setDoc(doc(db('student1'), 'requests', 'r1'), newRequest({ preferredContact: 'whatsapp' })));
     });
 
+    it('a student can mark a request "as soon as possible"', async () => {
+      await assertSucceeds(setDoc(doc(db('student1'), 'requests', 'r1'), newRequest({ urgency: 'asap' })));
+    });
+
+    it('how soon it is needed must be one of the three choices', async () => {
+      await assertFails(setDoc(doc(db('student1'), 'requests', 'r1'), newRequest({ urgency: 'emergency' })));
+    });
+
+    it('how soon it is needed cannot be left out', async () => {
+      const r = newRequest();
+      delete r.urgency;
+      await assertFails(setDoc(doc(db('student1'), 'requests', 'r1'), r));
+    });
+
     it('the note is limited to 500 characters', async () => {
       await assertFails(setDoc(doc(db('student1'), 'requests', 'r1'), newRequest({ note: 'x'.repeat(501) })));
     });
@@ -212,6 +228,11 @@ describe('Requests (Sprint 3)', function () {
     it('staff cannot change what the student wrote', async () => {
       await assertFails(updateDoc(doc(db('counsellor'), 'requests', 'r1'),
         { ...statusChange('counsellor', 'contacted'), contactValue: '0711 111 111' }));
+    });
+
+    it('staff cannot change how soon the student said they need it', async () => {
+      await assertFails(updateDoc(doc(db('counsellor'), 'requests', 'r1'),
+        { ...statusChange('counsellor', 'under_review'), urgency: 'no_rush' }));
     });
 
     it('staff cannot set it back to "submitted"', async () => {

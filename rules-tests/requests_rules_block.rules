@@ -32,16 +32,18 @@
       function validNewRequest() {
         let d = request.resource.data;
         return d.keys().hasOnly(['studentId', 'studentName', 'serviceId', 'requestType',
-              'preferredContact', 'contactValue', 'note', 'status',
+              'preferredContact', 'contactValue', 'urgency', 'note', 'status',
               'createdAt', 'updatedAt', 'lastUpdatedBy'])
           && d.keys().hasAll(['studentId', 'studentName', 'serviceId', 'requestType',
-              'preferredContact', 'contactValue', 'status',
+              'preferredContact', 'contactValue', 'urgency', 'status',
               'createdAt', 'updatedAt', 'lastUpdatedBy'])
           && d.studentId == request.auth.uid
           && d.lastUpdatedBy == request.auth.uid
           && d.studentName == reqMe().fullName
           && d.requestType in ['appointment', 'talk_to_someone', 'information', 'other']
           && d.preferredContact in ['call', 'sms', 'email']
+          // The STUDENT says how soon they need this; the app never judges it for them.
+          && d.urgency in ['asap', 'this_week', 'no_rush']
           && d.contactValue is string && d.contactValue.size() >= 3 && d.contactValue.size() <= 100
           && (!('note' in d) || (d.note is string && d.note.size() <= 500))
           && d.status == 'submitted'
