@@ -5,11 +5,12 @@ import '../../models/service_category.dart';
 import '../../models/support_service.dart';
 import '../../services/directory_service.dart';
 import '../home/home_page.dart';
+import 'my_requests_tab.dart';
 import 'resources_tab.dart';
 import 'service_detail_page.dart';
 import 'service_ui.dart';
 
-/// The student's home: two tabs - Services (FR3) and Information (FR2).
+/// The student's home: Services (FR3), Information (FR2) and My requests (FR5).
 class StudentHome extends StatefulWidget {
   const StudentHome({super.key, required this.me});
   final AppUser me;
@@ -34,6 +35,7 @@ class _StudentHomeState extends State<StudentHome> {
         children: [
           _ServicesTab(me: widget.me),
           const ResourcesTab(),
+          const MyRequestsTab(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -42,6 +44,7 @@ class _StudentHomeState extends State<StudentHome> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'Services'),
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'Information'),
+          NavigationDestination(icon: Icon(Icons.inbox_outlined), selectedIcon: Icon(Icons.inbox), label: 'My requests'),
         ],
       ),
     );

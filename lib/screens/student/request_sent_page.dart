@@ -69,7 +69,7 @@ class RequestSentPage extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'The ${service.name} team will review your request and contact you by $how. '
-            'You can follow its progress under "My requests" (coming in the next update).',
+            'You can follow its progress in the "My requests" tab.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
