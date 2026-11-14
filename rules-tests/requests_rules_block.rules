@@ -1,0 +1,120 @@
+    // ---------- requests (FR4, FR5, FR8, NFR1) - Sprint 3 ----------
+    // A student sends a support request to ONE service.
+    // Only that student and the staff of that service can ever read it.
+    // Admins manage accounts, not requests, so they cannot read them (privacy).
+    // Nothing is ever deleted; every change is kept in the history below.
+    match /requests/{requestId} {
+
+      function reqMe() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      }
+      function reqHasProfile() {
+        return request.auth != null
+          && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function reqIsStudent() {
+        return reqHasProfile() && reqMe().role == 'student';
+      }
+      function reqIsStaffOf(serviceId) {
+        return reqHasProfile() && reqMe().role == 'staff' && reqMe().get('serviceId', '') == serviceId;
+      }
+      function reqStatuses() {
+        return ['submitted', 'under_review', 'info_requested', 'contacted', 'closed', 'withdrawn'];
+      }
+      function reqFinal() {
+        return ['closed', 'withdrawn'];
+      }
+      function reqServicePublished(serviceId) {
+        return serviceId in ['counselling', 'peer_counselling', 'chaplaincy', 'workshops']
+          && exists(/databases/$(database)/documents/services/$(serviceId))
+          && get(/databases/$(database)/documents/services/$(serviceId)).data.status == 'published';
+      }
+      function validNewRequest() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['studentId', 'studentName', 'serviceId', 'requestType',
+              'preferredContact', 'contactValue', 'note', 'status',
+              'createdAt', 'updatedAt', 'lastUpdatedBy'])
+          && d.keys().hasAll(['studentId', 'studentName', 'serviceId', 'requestType',
+              'preferredContact', 'contactValue', 'status',
+              'createdAt', 'updatedAt', 'lastUpdatedBy'])
+          && d.studentId == request.auth.uid
+          && d.lastUpdatedBy == request.auth.uid
+          && d.studentName == reqMe().fullName
+          && d.requestType in ['appointment', 'talk_to_someone', 'information', 'other']
+          && d.preferredContact in ['call', 'sms', 'email']
+          && d.contactValue is string && d.contactValue.size() >= 3 && d.contactValue.size() <= 100
+          && (!('note' in d) || (d.note is string && d.note.size() <= 500))
+          && d.status == 'submitted'
+          && d.createdAt == request.time
+          && d.updatedAt == request.time;
+      }
+      // Only these three fields change after a request is sent.
+      function onlyStatusChange() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updatedAt', 'lastUpdatedBy'])
+          && request.resource.data.status in reqStatuses()
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.lastUpdatedBy == request.auth.uid
+          && !(resource.data.status in reqFinal());
+      }
+
+      allow read: if request.auth != null && (
+        resource.data.studentId == request.auth.uid
+        || reqIsStaffOf(resource.data.serviceId)
+      );
+
+      allow create: if reqIsStudent()
+        && validNewRequest()
+        && reqServicePublished(request.resource.data.serviceId);
+
+      allow update: if request.auth != null && onlyStatusChange() && (
+        // Staff of THAT service move it along (they cannot set it back to "submitted").
+        (reqIsStaffOf(resource.data.serviceId)
+          && request.resource.data.status in ['under_review', 'info_requested', 'contacted', 'closed'])
+        ||
+        // The student who sent it may withdraw it, or answer a question from staff.
+        (resource.data.studentId == request.auth.uid
+          && (request.resource.data.status == 'withdrawn'
+              || (resource.data.status == 'info_requested'
+                  && request.resource.data.status == 'under_review')))
+      );
+
+      allow delete: if false;
+
+      // ---------- history: who changed what, and when (append-only) ----------
+      match /updates/{updateId} {
+        function parentPath() {
+          return /databases/$(database)/documents/requests/$(requestId);
+        }
+        function parentAfter() {
+          return getAfter(parentPath()).data;
+        }
+        function canSeeParent(p) {
+          return p.studentId == request.auth.uid || reqIsStaffOf(p.serviceId);
+        }
+
+        allow read: if request.auth != null
+          && exists(parentPath())
+          && canSeeParent(get(parentPath()).data);
+
+        allow create: if request.auth != null
+          && existsAfter(parentPath())
+          && (!exists(parentPath()) || !(get(parentPath()).data.status in reqFinal()))
+          && request.resource.data.keys().hasOnly(['authorId', 'authorRole', 'message', 'newStatus', 'createdAt'])
+          && request.resource.data.keys().hasAll(['authorId', 'authorRole', 'createdAt'])
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && (!('message' in request.resource.data)
+              || (request.resource.data.message is string
+                  && request.resource.data.message.size() >= 1
+                  && request.resource.data.message.size() <= 500))
+          && (!('newStatus' in request.resource.data)
+              || request.resource.data.newStatus in reqStatuses())
+          && (
+            (request.resource.data.authorRole == 'student' && parentAfter().studentId == request.auth.uid)
+            || (request.resource.data.authorRole == 'staff' && reqIsStaffOf(parentAfter().serviceId))
+          );
+
+        allow update, delete: if false;
+      }
+    }

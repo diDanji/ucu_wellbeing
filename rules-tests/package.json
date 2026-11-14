@@ -1,9 +1,9 @@
 {
-  "name": "ucu-wellbeing-rules-tests",
+  "name": "rules-tests",
+  "version": "1.0.0",
   "private": true,
-  "description": "Automated tests for firestore.rules (NFR2) and demo data for the emulator",
   "scripts": {
-    "test": "mocha --timeout 15000 users.test.js services_resources.test.js",
+    "test": "mocha --timeout 15000 users.test.js services_resources.test.js requests.test.js",
     "seed": "node seed.js"
   },
   "devDependencies": {
